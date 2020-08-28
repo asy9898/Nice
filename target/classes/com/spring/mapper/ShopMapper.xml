@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.spring.mapper.ShopMapper">
+
+
+<select id="selectProduct" resultType="com.spring.domain.ProductVO">
+<![CDATA[
+
+select * from (select /*+INDEX_DESC(shop_product SYS_C0011489)*/
+		rownum rn,userid,pno,producttype,productname,gender,explanation,price,inventory,brand,regdate
+		from shop_product where pno>0 and rownum<=(#{pageNum}*#{amount})and (productname like '%'||#{keyword}||'%' or producttype like '%'||#{keyword}||'%' or brand like '%'||#{keyword}||'%'))
+where rn>=0 order by pno asc
+]]>
+</select>
+
+<insert id="insertMember">insert into shop_member values(#{userid},#{password},#{username},#{gender},#{email},#{phone},#{address})</insert>
+<select id="login" resultType="com.spring.domain.MemberVO">select * from shop_member where userid=#{userid} and password=#{password}</select>
+<select id="productInfo" resultType="com.spring.domain.ProductVO">select * from shop_product where pno=#{pno}</select>
+<select id="cartView" resultType="com.spring.domain.CartViewVO">
+select c.productsize,cartid,price,productname,amount,c.pno from shop_cart c,shop_member m,shop_product p where c.userid=m.userid and c.pno=p.pno and c.userid=#{userid}
+</select>
+<select id="totalPrice" resultType="int">
+select sum(price*amount) from shop_cart c,shop_member m,shop_product p 
+where c.userid=m.userid and c.pno=p.pno and c.userid=#{userid}
+</select>
+<insert id="insertProduct">
+<selectKey keyProperty="pno" order="BEFORE" resultType="int">select seq_shop.nextval from dual</selectKey> 
+insert into shop_product(pno,producttype,productname,gender,explanation,price,inventory,brand,userid,productsize)
+values(#{pno},#{producttype},#{productname},#{gender},#{explanation},#{price},#{inventory},#{brand},#{userid},#{productsize})</insert>
+
+<insert id="insertImage">
+insert into shop_image values(#{uuid},#{uploadPath},#{fileName},#{pno})</insert>
+<select id="mainImage" resultType="com.spring.domain.AttachVO">
+<![CDATA[
+select * from shop_image where pno=#{pno} and rownum<2
+]]>
+</select>
+<select id="getImage" resultType="com.spring.domain.AttachVO">select * from shop_image where pno=#{pno}</select>
+<insert id="insertCart">insert into shop_cart values(seq_cart.nextval,#{productsize},#{userid},#{pno},#{amount})</insert>
+<select id="total" resultType="int">select count(*) from shop_product where producttype like '%'||#{keyword}||'%' or productname like '%'||#{keyword}||'%' or brand like '%'||#{keyword}||'%'</select>
+<!-- cart에 담긴 숫자가 0개인지 확인 -->
+<select id="cartAmount" resultType="int">select count(*) from shop_cart where userid=#{userid}</select>
+<!-- 체크된 cart항목 삭제 -->
+<delete id="deleteCart">delete from shop_cart where cartid=#{cartid}</delete>
+<!-- 상품삭제 -->
+<delete id="deleteImage">delete from shop_image where pno=#{pno}</delete>
+<delete id="deleteUuid">delete from shop_image where uuid=#{uuid}</delete>
+<delete id="deleteProCart">delete from shop_cart where pno=#{pno}</delete>
+<delete id="deleteProduct">delete from shop_product where pno=#{pno}</delete>
+<!-- 상품수정 -->
+<select id="imageAmount" resultType="int">select count(*) from shop_Image where pno=#{pno]}</select>
+<update id="updateProduct">update shop_product set producttype=#{producttype},productname=#{productname},
+gender=#{gender},explanation=#{explanation},price=#{price},inventory=#{inventory},brand=#{brand} where pno=#{pno} </update>
+<!-- 카트에 같은pno와 size인 상품 장바구니 추가시 기존 상품에 amount만 추가 -->
+<update id="updateCartAmount">update shop_cart set amount=#{amount} where pno=#{pno} and productsize=#{productsize}</update>
+<!-- check된 cart만 불러오기 -->
+<select id="getCart" resultType="com.spring.domain.CartViewVO">
+select c.productsize,cartid,price,productname,amount,c.pno from shop_cart c,shop_member m,shop_product p where c.userid=m.userid and c.pno=p.pno and c.cartid=#{cartid}
+</select>
+<!-- 리뷰(댓글)삽입 -->
+<insert id="insertReview">insert into shop_review(rno,pno,userid,r_title,r_content,score) 
+values(seq_re.nextval,#{pno},#{userid},#{r_title},#{r_content},#{score})</insert>
+<!-- 리뷰 보기 -->
+<select id="getReview" resultType="com.spring.domain.ReviewVO">select * from shop_review where pno=#{pno} order by rno desc</select>
+<!-- 리뷰 3개 갖고오기 -->
+<select id="get3Review" resultType="com.spring.domain.ReviewVO">
+<![CDATA[select * from (select * from shop_review order by rno desc) where pno=#{pno} and rownum<=3]]>
+</select>
+
+
+
+
+</mapper>
